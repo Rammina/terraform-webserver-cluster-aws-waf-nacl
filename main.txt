@@ -1,0 +1,76 @@
+# Create WAF Web ACL
+resource "aws_waf_web_acl" "ddos_protection" {
+  name        = "ddos-protection-acl"
+  metric_name = "ddosProtectionAcl"
+
+  default_action {
+    type = "ALLOW"
+  }
+
+  rule {
+    name     = "rule-1"
+    priority = 1
+
+    action {
+      type = "BLOCK"
+    }
+
+    statement {
+      rate_based_statement {
+        limit              = 10000
+        aggregate_key_type = "IP"
+      }
+    }
+  }
+
+  rule {
+    name     = "rule-2"
+    priority = 2
+
+    action {
+      type = "BLOCK"
+    }
+
+    statement {
+      size_constraint_statement {
+        size            = 30 
+        comparison_operator = "GT"
+        field_to_match {
+          type = "QUERY_STRING"
+        }
+      }
+    }
+  }
+}
+
+# Allow only required ports in NACL
+resource "aws_network_acl" "nacl" {
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 80
+    to_port    = 80
+  }
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 110
+    action     = "allow"
+    cidr_block = "10.0.0.0/16"
+    from_port  = 22
+    to_port    = 22
+  }
+
+  egress {
+    protocol   = "-1"
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 0
+    to_port    = 0
+  }
+}
